@@ -1,9 +1,12 @@
 name: 🔁 Update Quote
 
 on:
-  workflow_dispatch:  # Manually trigger the workflow
+  workflow_dispatch:
   schedule:
-    - cron: '31 18 * * *'  # Runs daily at 12:01 AM IST (Indian time)
+    - cron: '31 18 * * *'
+
+permissions:
+  contents: write
 
 jobs:
   update-readme:
@@ -11,35 +14,40 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
-
       - name: Update Quote
         run: node update-quote.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check changes
+        run: |
+          echo "Git status:"
+          git status
+
+          echo ""
+          echo "README diff:"
+          git diff -- README.md
+
       - name: 📤 Commit and push changes
         run: |
-          git config --global user.name 'selvavelayutham395'
-          git config --global user.email 'tomtomselva@gmail.com'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          
-          # Ensure we are on main branch
-          git checkout main
-          
-          # Stage and commit changes if any
           git add README.md
-          git diff --cached --quiet || git commit --author="selvavelayutham395 <tomtomselva@gmail.com>" -m "🔁 Update README with daily quote"
-          
-          # Push changes
-          git push origin main
 
+          if git diff --cached --quiet; then
+            echo "❌ No changes detected in README.md"
+            exit 0
+          fi
+
+          git commit -m "🔁 Update README with daily quote"
+          git push origin HEAD:main
